@@ -3,113 +3,90 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>آلة حاسبة داكنة</title>
+<title>حاسبة وقت الطباعة — Print Time</title>
 <style>
-body{
-  background:#0f172a;
-  color:#fff;
-  font-family:"Segoe UI",Tahoma,"Noto Naskh Arabic",sans-serif;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-  margin:0;
-}
-.calculator{
-  background:#0b1220;
-  padding:20px;
-  border-radius:16px;
-  box-shadow:0 8px 30px rgba(0,0,0,.6);
-  width:280px;
-}
-.display{
-  background:#071029;
-  height:60px;
-  color:#e6eef8;
-  font-size:28px;
-  text-align:right;
-  padding:10px;
-  border-radius:8px;
-  margin-bottom:12px;
-  overflow:hidden;
-}
-.keys{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:8px;
-}
-button{
-  background:#1a2336;
-  color:#fff;
-  border:none;
-  border-radius:8px;
-  padding:16px;
-  font-size:18px;
-  cursor:pointer;
-  transition:.2s;
-}
-button:hover{
-  background:#24324e;
-}
-button.op{background:#1f6feb;}
-button.op:hover{background:#2b7ff3;}
-button.equal{background:#2563eb;}
-button.equal:hover{background:#3385ff;}
+body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,"Noto Naskh Arabic",sans-serif;background:#0f172a;color:#e6eef8;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;padding:20px;box-sizing:border-box}
+.card{background:#0b1220;padding:20px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,.6);max-width:520px;width:100%}
+h1{font-size:18px;margin:0 0 12px}
+label{display:block;font-size:13px;margin-bottom:6px;color:#bcd0f5}
+input[type="number"]{width:100%;padding:10px;border-radius:8px;border:1px solid #213149;background:#071029;color:#e6eef8;font-size:15px;box-sizing:border-box}
+.row{display:flex;gap:8px;margin-top:12px}
+button{padding:10px 14px;border-radius:8px;border:0;background:#1f6feb;color:white;cursor:pointer;font-weight:600}
+.result{margin-top:14px;padding:12px;border-radius:8px;background:#071733;color:#dff0ff;font-size:16px}
+.muted{font-size:13px;color:#9fb7e6;margin-top:6px}
+.small{font-size:13px;color:#cfe0ff}
+footer{margin-top:12px;font-size:12px;color:#9fb7e6}
 </style>
 </head>
-<body dir="rtl">
-<div class="calculator">
-  <div id="display" class="display">0</div>
-  <div class="keys">
-    <button onclick="clearDisplay()">C</button>
-    <button onclick="delChar()">⌫</button>
-    <button onclick="append('%')">%</button>
-    <button onclick="append('/')">÷</button>
-
-    <button onclick="append('7')">٧</button>
-    <button onclick="append('8')">٨</button>
-    <button onclick="append('9')">٩</button>
-    <button class="op" onclick="append('*')">×</button>
-
-    <button onclick="append('4')">٤</button>
-    <button onclick="append('5')">٥</button>
-    <button onclick="append('6')">٦</button>
-    <button class="op" onclick="append('-')">−</button>
-
-    <button onclick="append('1')">١</button>
-    <button onclick="append('2')">٢</button>
-    <button onclick="append('3')">٣</button>
-    <button class="op" onclick="append('+')">+</button>
-
-    <button onclick="append('0')" style="grid-column:span 2">٠</button>
-    <button onclick="append('.')">.</button>
-    <button class="equal" onclick="calculate()">=</button>
-  </div>
+<body>
+<div class="card" dir="rtl">
+<h1>حاسبة وقت الطباعة (بالسنتيمتر)</h1>
+<label for="cm">أدخل الطول بالسنتيمتر (مثال: 1970)</label>
+<input id="cm" type="number" step="1" min="0" placeholder="كم سم؟" autofocus>
+<div class="row">
+<button id="calcBtn">احسب الآن</button>
+<button id="copyBtn" style="background:#25a86a">نسخ الوقت</button>
+</div>
+<div id="output" class="result" style="display:none"></div>
+<div id="debug" class="muted"></div>
+<footer>كل متر = 13 دقيقة · يستخدم الوقت الحالي كبداية</footer>
 </div>
 
 <script>
-let display = document.getElementById('display');
-function append(val){
-  if(display.innerText==='0') display.innerText='';
-  display.innerText += val;
+(function(){
+const MINS_PER_M = 13;
+const cmInput = document.getElementById('cm');
+const out = document.getElementById('output');
+const debug = document.getElementById('debug');
+const calcBtn = document.getElementById('calcBtn');
+const copyBtn = document.getElementById('copyBtn');
+
+function pad(n){ return n.toString().padStart(2,'0'); }
+
+function toArabicAmPm(date){
+let hours = date.getHours();
+let minutes = date.getMinutes();
+let ampm = hours < 12 ? 'صباحًا' : 'مساءً';
+let hour12 = hours % 12;
+if(hour12 === 0) hour12 = 12;
+return `${pad(hour12)}:${pad(minutes)} ${ampm}`;
 }
-function clearDisplay(){ display.innerText='0'; }
-function delChar(){
-  display.innerText = display.innerText.slice(0,-1);
-  if(display.innerText==='') display.innerText='0';
+
+function compute(){
+let cm = parseFloat(cmInput.value);
+if(!isFinite(cm) || cm < 0){
+out.style.display='block';
+out.textContent = 'دخل رقم صحيح (أكبر من أو يساوي 0).';
+return;
 }
-function calculate(){
-  try{
-    let expr = display.innerText
-      .replace(/÷/g,'/')
-      .replace(/×/g,'*')
-      .replace(/٪/g,'%');
-    let result = eval(expr);
-    display.innerText = result;
-  }catch(e){
-    display.innerText='خطأ';
-  }
+let meters = cm/100;
+const totalMinutes = meters * MINS_PER_M;
+const start = new Date();
+const end = new Date(start.getTime() + Math.round(totalMinutes*60000));
+const startStr = toArabicAmPm(start);
+const endStr = toArabicAmPm(end);
+const endDate = end.getDate() + '/' + (end.getMonth()+1) + '/' + end.getFullYear();
+
+out.style.display='block';
+out.innerHTML = `<div class="small"><strong>وقت البدء:</strong> ${startStr}</div>
+<div style="margin-top:6px"><strong>وقت الانتهاء المتوقع:</strong> ${endStr}</div>
+<div class="small" style="margin-top:6px"><strong>التاريخ:</strong> ${endDate}</div>
+<div class="small" style="margin-top:6px">إجمالي الوقت: ${Math.floor(totalMinutes/60)} ساعة و ${Math.round(totalMinutes%60)} دقيقة</div>`;
+debug.textContent = `الدقائق الدقيقة (غير مقربة): ${totalMinutes.toFixed(2)}`;
 }
+
+calcBtn.addEventListener('click', compute);
+cmInput.addEventListener('keydown', function(e){ if(e.key==='Enter') compute(); });
+
+copyBtn.addEventListener('click', function(){
+if(out.style.display==='none') return;
+const txt = out.innerText;
+navigator.clipboard?.writeText(txt).then(()=> {
+copyBtn.textContent = 'تم النسخ';
+setTimeout(()=> copyBtn.textContent = 'نسخ الوقت',900);
+}, ()=> {copyBtn.textContent='فشل النسخ';setTimeout(()=> copyBtn.textContent='نسخ الوقت',900);});
+});
+})();
 </script>
 </body>
 </html>
